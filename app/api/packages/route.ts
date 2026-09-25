@@ -1,0 +1,36 @@
+import { NextResponse } from "next/server";
+import { connectToDatabase } from "@/app/lib/db";
+import { Package } from "@/app/model/package.model";
+
+export async function GET(request: Request) {
+  try {
+    await connectToDatabase();
+    const { searchParams } = new URL(request.url);
+    const clientId = searchParams.get("clientId");
+    
+    if (!clientId) {
+      return NextResponse.json({ error: "clientId is required" }, { status: 400 });
+    }
+    
+    const packages = await Package.find({ clientId }).sort({ createdAt: -1 });
+    return NextResponse.json(packages);
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch packages" }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    await connectToDatabase();
+    const body = await request.json();
+    
+    if (!body.clientId || !body.title) {
+      return NextResponse.json({ error: "clientId and title are required" }, { status: 400 });
+    }
+
+    const newPackage = await Package.create(body);
+    return NextResponse.json(newPackage, { status: 201 });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to create package" }, { status: 500 });
+  }
+}
