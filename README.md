@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Shield AI
 
-## Getting Started
+A premium B2B SaaS dashboard and AI toolkit designed for travel agencies. Shield AI allows you to manage agency profiles, travel packages, FAQs, and policies, while instantly providing embeddable AI Chatbots and Itinerary Planners for client websites.
 
-First, run the development server:
+## 🚀 Tech Stack
+- **Framework:** Next.js 16 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS
+- **Database:** MongoDB (via Mongoose)
+- **AI Engine:** Google Gemini (`@google/genai`)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 📂 Project Structure
+The project follows a direct, readable full-stack Next.js architecture (no unnecessary abstraction layers).
+
+- `app/api/` - Backend API routes (direct DB/Gemini access).
+- `app/dashboard/` - Admin dashboard UI pages.
+- `app/components/ui.tsx` - Lightweight, reusable design system.
+- `app/model/` - Mongoose database schemas.
+- `public/` - Standalone vanilla JS embed widgets (`chatbot.js`, `itinerary.js`).
+- `proxy.ts` - Edge middleware protecting the dashboard via simple cookie auth.
+
+## 🔑 Environment Variables
+Create a `.env.local` file in the root directory:
+```env
+MONGODB_URI=mongodb://localhost:27017/shield-ai
+GEMINI_API_KEY=your_gemini_api_key_here
+ADMIN_EMAIL=admin@shield.local
+ADMIN_PASSWORD=secret
+AUTH_SECRET=random_auth_secret_123
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Setup & Run
+```bash
+npm install
+npm run dev
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📡 API Endpoints Reference
 
-## Learn More
+All endpoints return standard JSON. The public AI/Lead endpoints have permissive CORS headers to support cross-origin widget embeds.
 
-To learn more about Next.js, take a look at the following resources:
+### Auth
+- `POST /api/auth/login` - Authenticates using env variables, sets HTTP-only cookie.
+- `POST /api/auth/logout` - Clears the auth cookie.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Clients (Agencies)
+- `GET /api/clients` - List all clients.
+- `POST /api/clients` - Create a new client.
+- `GET /api/clients/[id]` - Get single client details.
+- `PUT /api/clients/[id]` - Update client details.
+- `DELETE /api/clients/[id]` - Delete client.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Client Data (Packages, FAQs, Policies)
+*Replace `<resource>` with `packages`, `faqs`, or `policies`.*
+- `GET /api/<resource>?clientId=123` - List items belonging to a specific client.
+- `POST /api/<resource>` - Create a new item (requires `clientId` in body).
+- `PUT /api/<resource>/[id]` - Update an item.
+- `DELETE /api/<resource>/[id]` - Delete an item.
 
-## Deploy on Vercel
+### Leads
+- `GET /api/leads` - List leads (optional filter: `?clientId=123`).
+- `POST /api/leads` - Create a new lead (typically called directly by the Itinerary widget).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Public AI Features (CORS Enabled)
+- `POST /api/chat`
+  - **Body:** `{ clientId, message }`
+  - **Behavior:** Fetches client data (packages, faqs, policies), builds a strict system prompt, and calls Gemini to answer as an agency support assistant.
+  - **Returns:** `{ response: "..." }`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `POST /api/itinerary`
+  - **Body:** `{ clientId, destination, days, budget, travellers, travelDate, interests }`
+  - **Behavior:** Calls Gemini to build a structured, day-by-day travel plan avoiding false promises, referencing actual agency packages if relevant.
+  - **Returns:** Structured JSON `{ title, summary, days: [...], note, whatsapp }`
+
+---
+
+## 🧩 Public Embed Widgets
+The platform provides two zero-dependency, vanilla JS widgets designed to be embedded on any third-party host website without breaking their layout. 
+
+Embed via HTML `<script>` tags using the specific `clientId`:
+
+**1. Chatbot Assistant**
+```html
+<script src="https://your-domain.com/chatbot.js" data-client-id="CLIENT_ID"></script>
+```
+
+**2. Itinerary Planner**
+```html
+<script src="https://your-domain.com/itinerary.js" data-client-id="CLIENT_ID"></script>
+```
+*Note: Both widgets use fixed positioning and scoped CSS to ensure seamless integration.*
