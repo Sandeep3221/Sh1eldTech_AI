@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import { Policy } from "@/app/model/policy.model";
+import { pickAndValidatePolicy } from "@/app/lib/validation";
 
 export async function GET(request: Request) {
   try {
@@ -28,7 +29,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "clientId, title, and content are required" }, { status: 400 });
     }
 
-    const newPolicy = await Policy.create(body);
+    const safeBody = pickAndValidatePolicy(body);
+    const newPolicy = await Policy.create(safeBody);
     return NextResponse.json(newPolicy, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: "Failed to create policy" }, { status: 500 });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import { Client } from "@/app/model/client.model";
+import { pickAndValidateClient } from "@/app/lib/validation";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -22,8 +23,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     await connectToDatabase();
     const { id } = await params;
     const body = await request.json();
+    const safeBody = pickAndValidateClient(body);
     
-    const client = await Client.findByIdAndUpdate(id, body, { new: true, runValidators: true });
+    const client = await Client.findByIdAndUpdate(id, safeBody, { new: true, runValidators: true });
     if (!client) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }

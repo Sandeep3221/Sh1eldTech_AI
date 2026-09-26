@@ -52,6 +52,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Itinerary planning not available" }, { status: 404, headers: corsHeaders });
     }
 
+    if (client.status !== 'active') {
+      return NextResponse.json({ error: "Client is inactive" }, { status: 403, headers: corsHeaders });
+    }
+
     if (!validateAllowedDomain(request, client.allowedDomains)) {
       return NextResponse.json({ error: "Domain not authorized" }, { status: 403, headers: corsHeaders });
     }
@@ -74,7 +78,7 @@ export async function POST(request: NextRequest) {
       });
     } catch (e) {
       console.error("Failed to create lead:", e);
-      // Continue anyway to not block user from getting the itinerary
+      return NextResponse.json({ error: "Unable to save your request. Please try again." }, { status: 500, headers: corsHeaders });
     }
 
     const packages = await Package.find({ clientId: client._id, active: true });

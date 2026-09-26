@@ -63,6 +63,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Domain not authorized" }, { status: 403, headers: corsHeaders });
     }
     
+    if (client.status !== 'active') {
+      return NextResponse.json({ error: "Client is inactive" }, { status: 403, headers: corsHeaders });
+    }
+
     if (!client.chatbotEnabled) {
       return NextResponse.json({ error: "Chatbot is disabled for this client" }, { status: 403, headers: corsHeaders });
     }

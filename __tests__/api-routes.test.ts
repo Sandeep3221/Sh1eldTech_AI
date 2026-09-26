@@ -19,7 +19,8 @@ const mockClient = {
   itineraryEnabled: true,
   allowedDomains: [],
   name: 'Test Agency',
-  currency: 'USD'
+  currency: 'USD',
+  status: 'active'
 };
 
 vi.mock('../app/model/client.model', () => ({

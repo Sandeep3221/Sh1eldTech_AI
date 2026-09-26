@@ -378,28 +378,58 @@
       }
 
       form.style.display = 'none';
-      let html = `<h3>${data.title}</h3><p>${data.summary}</p>`;
+      resDiv.innerHTML = ''; // clear previous content safely
+      
+      const titleEl = document.createElement('h3');
+      titleEl.textContent = data.title;
+      resDiv.appendChild(titleEl);
+
+      const summaryEl = document.createElement('p');
+      summaryEl.textContent = data.summary;
+      resDiv.appendChild(summaryEl);
       
       data.days.forEach(d => {
-        html += `
-          <div class="shield-iti-day">
-            <strong>Day ${d.day}: ${d.title}</strong>
-            <ul>
-              ${d.activities.map(a => `<li>${a}</li>`).join('')}
-            </ul>
-          </div>
-        `;
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'shield-iti-day';
+        
+        const dayTitle = document.createElement('strong');
+        dayTitle.textContent = 'Day ' + d.day + ': ' + d.title;
+        dayDiv.appendChild(dayTitle);
+        
+        const ul = document.createElement('ul');
+        d.activities.forEach(a => {
+          const li = document.createElement('li');
+          li.textContent = a;
+          ul.appendChild(li);
+        });
+        dayDiv.appendChild(ul);
+        resDiv.appendChild(dayDiv);
       });
-      html += `<p style="margin-top:20px; font-size:12px; color:#666; font-style:italic;">${data.note}</p>`;
+      
+      const noteEl = document.createElement('p');
+      noteEl.style.marginTop = '20px';
+      noteEl.style.fontSize = '12px';
+      noteEl.style.color = '#666';
+      noteEl.style.fontStyle = 'italic';
+      noteEl.textContent = data.note;
+      resDiv.appendChild(noteEl);
       
       if (data.whatsapp) {
-        const text = encodeURIComponent(`Hi, I'm interested in the ${payload.destination} itinerary for ${payload.days} days.`);
-        html += `<a href="https://wa.me/${data.whatsapp.replace(/[^0-9]/g, '')}?text=${text}" target="_blank" class="shield-iti-wa">Enquire on WhatsApp</a>`;
+        const text = encodeURIComponent("Hi, I'm interested in the " + payload.destination + " itinerary for " + payload.days + " days.");
+        const waLink = document.createElement('a');
+        waLink.href = 'https://wa.me/' + data.whatsapp.replace(/[^0-9]/g, '') + '?text=' + text;
+        waLink.target = '_blank';
+        waLink.className = 'shield-iti-wa';
+        waLink.textContent = 'Enquire on WhatsApp';
+        resDiv.appendChild(waLink);
       }
       
-      html += `<button class="shield-iti-restart" id="shield-iti-restart">Plan Another Trip</button>`;
+      const restartBtn = document.createElement('button');
+      restartBtn.className = 'shield-iti-restart';
+      restartBtn.id = 'shield-iti-restart';
+      restartBtn.textContent = 'Plan Another Trip';
+      resDiv.appendChild(restartBtn);
 
-      resDiv.innerHTML = html;
       resDiv.style.display = 'block';
       
       document.getElementById('shield-iti-restart').addEventListener('click', () => {

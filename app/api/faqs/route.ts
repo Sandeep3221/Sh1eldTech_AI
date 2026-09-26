@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import { Faq } from "@/app/model/faq.model";
+import { pickAndValidateFaq } from "@/app/lib/validation";
 
 export async function GET(request: Request) {
   try {
@@ -28,7 +29,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "clientId, question, and answer are required" }, { status: 400 });
     }
 
-    const newFaq = await Faq.create(body);
+    const safeBody = pickAndValidateFaq(body);
+    const newFaq = await Faq.create(safeBody);
     return NextResponse.json(newFaq, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: "Failed to create faq" }, { status: 500 });

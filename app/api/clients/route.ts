@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import { Client } from "@/app/model/client.model";
 import crypto from "crypto";
+import { pickAndValidateClient } from "@/app/lib/validation";
 
 export async function GET() {
   try {
@@ -23,11 +24,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
     }
 
-    if (!body.clientId) {
-      body.clientId = `shd_${crypto.randomBytes(8).toString('hex')}`;
-    }
+    const safeBody = pickAndValidateClient(body);
+    safeBody.clientId = `shd_${crypto.randomBytes(8).toString('hex')}`;
 
-    const newClient = await Client.create(body);
+    const newClient = await Client.create(safeBody);
     return NextResponse.json(newClient, { status: 201 });
   } catch (error) {
     console.error("Failed to create client", error);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import { Package } from "@/app/model/package.model";
+import { pickAndValidatePackage } from "@/app/lib/validation";
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -8,7 +9,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const body = await request.json();
     
-    const updatedPackage = await Package.findByIdAndUpdate(id, body, { new: true, runValidators: true });
+    const safeBody = pickAndValidatePackage(body);
+    const updatedPackage = await Package.findByIdAndUpdate(id, safeBody, { new: true, runValidators: true });
     if (!updatedPackage) return NextResponse.json({ error: "Package not found" }, { status: 404 });
     
     return NextResponse.json(updatedPackage);

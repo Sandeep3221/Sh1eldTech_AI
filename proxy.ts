@@ -33,8 +33,7 @@ export async function proxy(request: NextRequest) {
       pathname === '/api/auth/logout' || 
       pathname === '/api/chat' || 
       pathname === '/api/itinerary' ||
-      pathname === '/api/widget-config' ||
-      (pathname === '/api/leads' && request.method === 'POST');
+      pathname === '/api/widget-config';
 
     if (!isPublicApi) {
       if (!isAuth) {

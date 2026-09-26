@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import { Package } from "@/app/model/package.model";
+import { pickAndValidatePackage } from "@/app/lib/validation";
 
 export async function GET(request: Request) {
   try {
@@ -28,7 +29,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "clientId and title are required" }, { status: 400 });
     }
 
-    const newPackage = await Package.create(body);
+    const safeBody = pickAndValidatePackage(body);
+    const newPackage = await Package.create(safeBody);
     return NextResponse.json(newPackage, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: "Failed to create package" }, { status: 500 });
