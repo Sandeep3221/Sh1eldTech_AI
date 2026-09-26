@@ -1,19 +1,45 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { verifySessionToken } from './app/lib/auth';
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const token = request.cookies.get('shield_auth')?.value;
-  const isAuth = token === process.env.AUTH_SECRET;
+  let isAuth = false;
 
-  if (request.nextUrl.pathname.startsWith('/dashboard')) {
+  if (token) {
+    const payload = await verifySessionToken(token);
+    if (payload && payload.role === 'admin') {
+      isAuth = true;
+    }
+  }
+
+  const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith('/dashboard')) {
     if (!isAuth) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
   }
 
-  if (request.nextUrl.pathname === '/' || request.nextUrl.pathname === '/login') {
+  if (pathname === '/' || pathname === '/login') {
     if (isAuth) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+  }
+
+  if (pathname.startsWith('/api/')) {
+    const isPublicApi = 
+      pathname === '/api/auth/login' || 
+      pathname === '/api/auth/logout' || 
+      pathname === '/api/chat' || 
+      pathname === '/api/itinerary' ||
+      pathname === '/api/widget-config' ||
+      (pathname === '/api/leads' && request.method === 'POST');
+
+    if (!isPublicApi) {
+      if (!isAuth) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
   }
 
@@ -21,5 +47,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/', '/login'],
+  matcher: ['/dashboard/:path*', '/', '/login', '/api/:path*'],
 };

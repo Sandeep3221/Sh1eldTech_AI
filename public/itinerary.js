@@ -206,17 +206,38 @@
   `;
   document.head.appendChild(style);
 
+  // Fetch configuration
+  let config = {
+    branding: {
+      primaryColor: '#000000',
+      itineraryTitle: 'Plan Your Trip',
+      itineraryLauncherText: 'Plan My Trip'
+    }
+  };
+
+  fetch(`${hostUrl}/api/widget-config?clientId=${clientId}`)
+    .then(res => res.json())
+    .then(data => {
+      if (!data.error && data.itineraryEnabled !== false) {
+        config = { ...config, ...data };
+        updateBranding();
+      } else if (data.itineraryEnabled === false) {
+        document.getElementById('shield-iti-wrapper').style.display = 'none';
+      }
+    })
+    .catch(() => { /* use defaults */ });
+
   const wrapper = document.createElement('div');
   wrapper.id = 'shield-iti-wrapper';
   
   wrapper.innerHTML = `
-    <button id="shield-iti-launcher">
+    <button id="shield-iti-launcher" style="background: ${config.branding.primaryColor}">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-      Plan My Trip
+      <span id="shield-iti-launcher-text">${config.branding.itineraryLauncherText}</span>
     </button>
     <div id="shield-iti-modal">
-      <div class="shield-iti-header">
-        <span>Plan Your Trip</span>
+      <div class="shield-iti-header" style="background: ${config.branding.primaryColor}">
+        <span id="shield-iti-title-text">${config.branding.itineraryTitle}</span>
         <button class="shield-iti-close" id="shield-iti-close">&times;</button>
       </div>
       <div class="shield-iti-body">
@@ -225,9 +246,15 @@
             <label>Name *</label>
             <input type="text" class="shield-iti-input" id="shield-iti-name" required />
           </div>
-          <div class="shield-iti-field">
-            <label>Phone/Email *</label>
-            <input type="text" class="shield-iti-input" id="shield-iti-contact" required />
+          <div class="shield-iti-row">
+            <div class="shield-iti-field">
+              <label>Phone</label>
+              <input type="text" class="shield-iti-input" id="shield-iti-phone" />
+            </div>
+            <div class="shield-iti-field">
+              <label>Email</label>
+              <input type="email" class="shield-iti-input" id="shield-iti-email" />
+            </div>
           </div>
           <div class="shield-iti-row">
             <div class="shield-iti-field">
@@ -249,9 +276,15 @@
               <input type="text" class="shield-iti-input" id="shield-iti-budget" placeholder="e.g. $1000" />
             </div>
           </div>
-          <div class="shield-iti-field">
-            <label>Interests</label>
-            <input type="text" class="shield-iti-input" id="shield-iti-int" placeholder="e.g. Adventure, Beach" />
+          <div class="shield-iti-row">
+            <div class="shield-iti-field">
+              <label>Travel Date</label>
+              <input type="date" class="shield-iti-input" id="shield-iti-date" />
+            </div>
+            <div class="shield-iti-field">
+              <label>Interests</label>
+              <input type="text" class="shield-iti-input" id="shield-iti-int" placeholder="e.g. Adventure" />
+            </div>
           </div>
           <button type="submit" class="shield-iti-btn" id="shield-iti-submit">Generate Itinerary</button>
         </form>
@@ -262,6 +295,26 @@
   `;
   
   document.body.appendChild(wrapper);
+
+  function updateBranding() {
+    const launcher = document.getElementById('shield-iti-launcher');
+    const header = document.querySelector('.shield-iti-header');
+    const submitBtn = document.getElementById('shield-iti-submit');
+    const launcherText = document.getElementById('shield-iti-launcher-text');
+    const titleText = document.getElementById('shield-iti-title-text');
+    
+    if (launcher) launcher.style.background = config.branding.primaryColor;
+    if (header) header.style.background = config.branding.primaryColor;
+    if (submitBtn) submitBtn.style.background = config.branding.primaryColor;
+    
+    if (launcherText) launcherText.innerText = config.branding.itineraryLauncherText;
+    if (titleText) titleText.innerText = config.branding.itineraryTitle;
+    
+    // Create new style block for dynamic day borders
+    const dynamicStyle = document.createElement('style');
+    dynamicStyle.innerHTML = ".shield-iti-day { border-left-color: " + config.branding.primaryColor + " !important; }";
+    document.head.appendChild(dynamicStyle);
+  }
 
   const launcher = document.getElementById('shield-iti-launcher');
   const modal = document.getElementById('shield-iti-modal');
@@ -283,6 +336,15 @@
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    
+    const phone = document.getElementById('shield-iti-phone').value;
+    const email = document.getElementById('shield-iti-email').value;
+    if (!phone && !email) {
+      errDiv.innerText = 'Please provide either a phone number or an email address.';
+      errDiv.style.display = 'block';
+      return;
+    }
+
     btn.disabled = true;
     btn.innerText = 'Planning...';
     errDiv.style.display = 'none';
@@ -291,32 +353,18 @@
     const payload = {
       clientId,
       name: document.getElementById('shield-iti-name').value,
-      contact: document.getElementById('shield-iti-contact').value,
+      phone: phone,
+      email: email,
       destination: document.getElementById('shield-iti-dest').value,
       days: Number(document.getElementById('shield-iti-days').value),
       travellers: Number(document.getElementById('shield-iti-pax').value),
       budget: document.getElementById('shield-iti-budget').value,
       interests: document.getElementById('shield-iti-int').value,
+      travelDate: document.getElementById('shield-iti-date').value,
       source: 'Itinerary Widget'
     };
 
     try {
-      fetch(`${hostUrl}/api/leads`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId: payload.clientId,
-          name: payload.name,
-          phone: payload.contact,
-          destination: payload.destination,
-          days: payload.days,
-          travellers: payload.travellers,
-          budget: payload.budget,
-          interests: payload.interests,
-          source: payload.source
-        })
-      });
-
       const itiRes = await fetch(`${hostUrl}/api/itinerary`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

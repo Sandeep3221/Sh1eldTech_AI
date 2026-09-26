@@ -38,10 +38,28 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   try {
     await connectToDatabase();
     const { id } = await params;
-    const client = await Client.findByIdAndDelete(id);
+    
+    const client = await Client.findById(id);
     if (!client) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
+
+    const { Package } = await import("@/app/model/package.model");
+    const { Faq } = await import("@/app/model/faq.model");
+    const { Policy } = await import("@/app/model/policy.model");
+    const { Lead } = await import("@/app/model/lead.model");
+    const { AIUsage } = await import("@/app/model/ai-usage.model");
+
+    await Package.deleteMany({ clientId: id });
+    await Faq.deleteMany({ clientId: id });
+    await Policy.deleteMany({ clientId: id });
+    
+    // Also delete using string clientId
+    await Lead.deleteMany({ clientId: client.clientId });
+    await AIUsage.deleteMany({ clientId: client.clientId });
+
+    await Client.findByIdAndDelete(id);
+    
     return NextResponse.json({ message: "Client deleted successfully" });
   } catch (error) {
     console.error("Failed to delete client", error);

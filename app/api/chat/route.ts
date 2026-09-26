@@ -1,12 +1,13 @@
-import { NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
+import { NextResponse, NextRequest } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import { Client } from "@/app/model/client.model";
 import { Package } from "@/app/model/package.model";
 import { Faq } from "@/app/model/faq.model";
 import { Policy } from "@/app/model/policy.model";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { AIUsage } from "@/app/model/ai-usage.model";
+import { validateAllowedDomain } from "@/app/lib/security";
+import { chatRateLimiter } from "@/app/lib/rate-limit";
+import { generateChatResponse } from "@/app/lib/ai/service";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,13 +19,37 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  let usageClientId = "unknown";
+  
   try {
+    const ip = request.headers.get("x-forwarded-for") || "unknown";
     const body = await request.json();
-    const { clientId, message } = body;
+    const { clientId, message, history = [] } = body;
+    usageClientId = clientId || "unknown";
     
-    if (!clientId || !message) {
+    if (!clientId || !message || typeof message !== 'string') {
       return NextResponse.json({ error: "clientId and message are required" }, { status: 400, headers: corsHeaders });
+    }
+
+    if (message.length > 2000) {
+      return NextResponse.json({ error: "Message too long" }, { status: 400, headers: corsHeaders });
+    }
+    
+    if (!Array.isArray(history) || history.length > 10) {
+      return NextResponse.json({ error: "Invalid history format or too long (max 10)" }, { status: 400, headers: corsHeaders });
+    }
+
+    for (const msg of history) {
+      if (!msg.role || !msg.content || typeof msg.content !== 'string' || msg.content.length > 2000 || !['user', 'model'].includes(msg.role)) {
+        return NextResponse.json({ error: "Invalid history entries" }, { status: 400, headers: corsHeaders });
+      }
+    }
+
+    const rateLimitKey = `${clientId}_${ip}`;
+    if (!chatRateLimiter.check(rateLimitKey)) {
+      return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429, headers: corsHeaders });
     }
 
     await connectToDatabase();
@@ -32,6 +57,10 @@ export async function POST(request: Request) {
     const client = await Client.findOne({ clientId });
     if (!client) {
       return NextResponse.json({ error: "Client not found" }, { status: 404, headers: corsHeaders });
+    }
+
+    if (!validateAllowedDomain(request, client.allowedDomains)) {
+      return NextResponse.json({ error: "Domain not authorized" }, { status: 403, headers: corsHeaders });
     }
     
     if (!client.chatbotEnabled) {
@@ -42,6 +71,9 @@ export async function POST(request: Request) {
     const faqs = await Faq.find({ clientId: client._id });
     const policies = await Policy.find({ clientId: client._id });
 
+    // Format prices with currency
+    const currency = client.currency || 'INR';
+    
     const systemPrompt = `
 You are a support assistant for ${client.name}.
 Business Description: ${client.businessDescription || 'N/A'}
@@ -66,28 +98,50 @@ Rules:
 - do not answer unrelated random questions
 
 Available Packages:
-${packages.map((p: any) => `- ${p.title} (${p.days}D/${p.nights}N) to ${p.destination}. Price: $${p.price}. Description: ${p.description}. Inclusions: ${p.inclusions.join(', ')}. Exclusions: ${p.exclusions.join(', ')}.`).join('\n')}
+${packages.map((p: Record<string, unknown>) => `- ${p.title} (${p.days}D/${p.nights}N) to ${p.destination}. Price: ${currency} ${p.price}. Description: ${p.description}. Inclusions: ${(p.inclusions as string[]).join(', ')}. Exclusions: ${(p.exclusions as string[]).join(', ')}.`).join('\n')}
 
 FAQs:
-${faqs.map((f: any) => `Q: ${f.question}\nA: ${f.answer}`).join('\n')}
+${faqs.map((f: Record<string, unknown>) => `Q: ${f.question}\nA: ${f.answer}`).join('\n')}
 
 Policies:
-${policies.map((p: any) => `${p.title}:\n${p.content}`).join('\n')}
+${policies.map((p: Record<string, unknown>) => `${p.title}:\n${p.content}`).join('\n')}
 `;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash-lite',
-        contents: message,
-        config: {
-            systemInstruction: systemPrompt,
-        }
-    });
+    const { text: aiMessage, usage } = await generateChatResponse(systemPrompt, history, message);
 
-    const aiMessage = response.text || "I'm sorry, I couldn't generate a response.";
+    try {
+      await AIUsage.create({
+        clientId,
+        feature: 'chat',
+        aiModel: 'gemini-3.5-flash-lite',
+        success: true,
+        latencyMs: Date.now() - startTime,
+        promptTokenCount: usage?.promptTokenCount,
+        candidatesTokenCount: usage?.candidatesTokenCount,
+        totalTokenCount: usage?.totalTokenCount,
+      });
+    } catch (e) {
+      console.error("Failed to log AI usage", e);
+    }
 
     return NextResponse.json({ response: aiMessage }, { headers: corsHeaders });
   } catch (error) {
     console.error("Chat API error:", error);
+    
+    try {
+      await connectToDatabase();
+      await AIUsage.create({
+        clientId: usageClientId,
+        feature: 'chat',
+        aiModel: 'gemini-3.5-flash-lite',
+        success: false,
+        latencyMs: Date.now() - startTime,
+        errorCategory: (error as Error).message || "Unknown error",
+      });
+    } catch (e) {
+      // Ignore logging failure
+    }
+    
     return NextResponse.json({ error: "Failed to process chat request" }, { status: 500, headers: corsHeaders });
   }
 }

@@ -18,6 +18,17 @@ interface ClientData {
   supportEmail: string;
   chatbotEnabled: boolean;
   itineraryEnabled: boolean;
+  allowedDomains: string[];
+  currency: string;
+  status: 'active' | 'suspended' | 'archived';
+  branding: {
+    primaryColor: string;
+    chatbotTitle: string;
+    chatbotWelcomeMessage: string;
+    itineraryTitle: string;
+    itineraryLauncherText: string;
+    logoUrl: string;
+  };
 }
 
 const initialFormState = {
@@ -32,6 +43,17 @@ const initialFormState = {
   supportEmail: "",
   chatbotEnabled: false,
   itineraryEnabled: false,
+  allowedDomains: [] as string[],
+  currency: "INR",
+  status: "active",
+  branding: {
+    primaryColor: "#000000",
+    chatbotTitle: "Support Assistant",
+    chatbotWelcomeMessage: "Hello! How can I help you today?",
+    itineraryTitle: "Plan Your Trip",
+    itineraryLauncherText: "Plan My Trip",
+    logoUrl: ""
+  }
 };
 
 export default function ClientsPage() {
@@ -61,11 +83,17 @@ export default function ClientsPage() {
     }
   }
 
-  function handleInputChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     const { name, value, type } = e.target;
     if (type === "checkbox") {
       const checked = (e.target as HTMLInputElement).checked;
       setFormData((prev) => ({ ...prev, [name]: checked }));
+    } else if (name.startsWith('branding.')) {
+      const field = name.split('.')[1];
+      setFormData((prev) => ({ 
+        ...prev, 
+        branding: { ...prev.branding, [field]: value } 
+      }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -91,6 +119,17 @@ export default function ClientsPage() {
       supportEmail: client.supportEmail || "",
       chatbotEnabled: client.chatbotEnabled || false,
       itineraryEnabled: client.itineraryEnabled || false,
+      allowedDomains: client.allowedDomains || [],
+      currency: client.currency || "INR",
+      status: client.status || "active",
+      branding: {
+        primaryColor: client.branding?.primaryColor || "#000000",
+        chatbotTitle: client.branding?.chatbotTitle || "Support Assistant",
+        chatbotWelcomeMessage: client.branding?.chatbotWelcomeMessage || "Hello! How can I help you today?",
+        itineraryTitle: client.branding?.itineraryTitle || "Plan Your Trip",
+        itineraryLauncherText: client.branding?.itineraryLauncherText || "Plan My Trip",
+        logoUrl: client.branding?.logoUrl || ""
+      }
     });
     setEditingId(client._id);
     setIsFormOpen(true);
@@ -122,7 +161,7 @@ export default function ClientsPage() {
   }
 
   async function deleteClient(id: string) {
-    if (!confirm("Are you sure you want to delete this client?")) return;
+    if (!confirm("Are you sure you want to permanently delete this client?")) return;
     try {
       const res = await fetch(`/api/clients/${id}`, { method: "DELETE" });
       if (res.ok) {
@@ -167,10 +206,12 @@ export default function ClientsPage() {
                 <Label required>Business Name</Label>
                 <Input required type="text" name="name" value={formData.name} onChange={handleInputChange} />
               </div>
-              <div>
-                <Label required>Unique Client ID</Label>
-                <Input required type="text" name="clientId" value={formData.clientId} onChange={handleInputChange} className="font-mono text-sm" />
-              </div>
+              {editingId && (
+                <div>
+                  <Label>Unique Client ID</Label>
+                  <Input readOnly type="text" name="clientId" value={formData.clientId} className="font-mono text-sm bg-gray-50" />
+                </div>
+              )}
               <div>
                 <Label required>Primary Email</Label>
                 <Input required type="email" name="email" value={formData.email} onChange={handleInputChange} />
@@ -195,6 +236,23 @@ export default function ClientsPage() {
                 <Label>Support Email</Label>
                 <Input type="email" name="supportEmail" value={formData.supportEmail} onChange={handleInputChange} />
               </div>
+              <div>
+                <Label>Currency Code</Label>
+                <select name="currency" value={formData.currency} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none bg-white">
+                  <option value="INR">INR (₹)</option>
+                  <option value="USD">USD ($)</option>
+                  <option value="NPR">NPR (रु)</option>
+                  <option value="EUR">EUR (€)</option>
+                </select>
+              </div>
+              <div>
+                <Label>Client Status</Label>
+                <select name="status" value={formData.status} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none bg-white">
+                  <option value="active">Active</option>
+                  <option value="suspended">Suspended</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
             </div>
             
             <div>
@@ -205,6 +263,47 @@ export default function ClientsPage() {
                 onChange={handleInputChange} 
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none min-h-[100px]"
               />
+            </div>
+            
+            <div>
+              <Label>Allowed Domains (comma or newline separated)</Label>
+              <textarea 
+                name="allowedDomains" 
+                value={Array.isArray(formData.allowedDomains) ? formData.allowedDomains.join('\n') : (formData.allowedDomains || '')} 
+                onChange={(e) => setFormData(prev => ({ ...prev, allowedDomains: e.target.value.split(/[\n,]+/).map(d => d.trim()).filter(Boolean) }))} 
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none min-h-[80px]"
+                placeholder="example.com&#10;www.example.com"
+              />
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+              <h4 className="text-sm font-semibold text-gray-900 mb-4">Widget Branding</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Primary Color (Hex)</Label>
+                  <Input type="text" name="branding.primaryColor" value={formData.branding.primaryColor} onChange={handleInputChange} placeholder="#000000" />
+                </div>
+                <div>
+                  <Label>Logo URL</Label>
+                  <Input type="text" name="branding.logoUrl" value={formData.branding.logoUrl} onChange={handleInputChange} placeholder="https://..." />
+                </div>
+                <div>
+                  <Label>Chatbot Title</Label>
+                  <Input type="text" name="branding.chatbotTitle" value={formData.branding.chatbotTitle} onChange={handleInputChange} />
+                </div>
+                <div>
+                  <Label>Chatbot Welcome Message</Label>
+                  <Input type="text" name="branding.chatbotWelcomeMessage" value={formData.branding.chatbotWelcomeMessage} onChange={handleInputChange} />
+                </div>
+                <div>
+                  <Label>Itinerary Title</Label>
+                  <Input type="text" name="branding.itineraryTitle" value={formData.branding.itineraryTitle} onChange={handleInputChange} />
+                </div>
+                <div>
+                  <Label>Itinerary Launcher Text</Label>
+                  <Input type="text" name="branding.itineraryLauncherText" value={formData.branding.itineraryLauncherText} onChange={handleInputChange} />
+                </div>
+              </div>
             </div>
 
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">

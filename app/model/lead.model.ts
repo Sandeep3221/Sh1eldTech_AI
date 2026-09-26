@@ -13,7 +13,10 @@ export interface ILead extends Document {
   interests?: string;
   message?: string;
   source: string;
+  status: 'new' | 'contacted' | 'interested' | 'quotation_sent' | 'won' | 'lost';
+  notes?: string;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const LeadSchema: Schema = new Schema({
@@ -29,7 +32,14 @@ const LeadSchema: Schema = new Schema({
   interests: { type: String },
   message: { type: String },
   source: { type: String, required: true },
+  status: { 
+    type: String, 
+    enum: ['new', 'contacted', 'interested', 'quotation_sent', 'won', 'lost'], 
+    default: 'new' 
+  },
+  notes: { type: String },
   createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 });
 
 export const Lead = mongoose.models.Lead || mongoose.model<ILead>("Lead", LeadSchema);

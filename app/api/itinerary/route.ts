@@ -1,10 +1,12 @@
-import { NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
+import { NextResponse, NextRequest } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import { Client } from "@/app/model/client.model";
 import { Package } from "@/app/model/package.model";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { Lead } from "@/app/model/lead.model";
+import { AIUsage } from "@/app/model/ai-usage.model";
+import { validateAllowedDomain } from "@/app/lib/security";
+import { itineraryRateLimiter } from "@/app/lib/rate-limit";
+import { generateItinerary } from "@/app/lib/ai/service";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,13 +18,31 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  let usageClientId = "unknown";
+  
   try {
+    const ip = request.headers.get("x-forwarded-for") || "unknown";
     const body = await request.json();
-    const { clientId, destination, days, budget, travellers, travelDate, interests } = body;
+    const { clientId, name, phone, email, destination, days, budget, travellers, travelDate, interests, source } = body;
+    usageClientId = clientId || "unknown";
 
-    if (!clientId || !destination || !days) {
-      return NextResponse.json({ error: "clientId, destination, and days are required" }, { status: 400, headers: corsHeaders });
+    if (!clientId || !destination || !days || !name || (!phone && !email)) {
+      return NextResponse.json({ error: "Required fields missing" }, { status: 400, headers: corsHeaders });
+    }
+
+    if (typeof name !== 'string' || name.length > 100 || typeof destination !== 'string' || destination.length > 100) {
+      return NextResponse.json({ error: "Invalid field length" }, { status: 400, headers: corsHeaders });
+    }
+    
+    if (typeof days !== 'number' || days < 1 || days > 30) {
+      return NextResponse.json({ error: "Days must be between 1 and 30" }, { status: 400, headers: corsHeaders });
+    }
+
+    const rateLimitKey = `${clientId}_${ip}`;
+    if (!itineraryRateLimiter.check(rateLimitKey)) {
+      return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429, headers: corsHeaders });
     }
 
     await connectToDatabase();
@@ -32,7 +52,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Itinerary planning not available" }, { status: 404, headers: corsHeaders });
     }
 
+    if (!validateAllowedDomain(request, client.allowedDomains)) {
+      return NextResponse.json({ error: "Domain not authorized" }, { status: 403, headers: corsHeaders });
+    }
+
+    // Create the lead
+    try {
+      await Lead.create({
+        clientId,
+        name,
+        phone: phone || '',
+        email: email || '',
+        destination,
+        days,
+        travellers: typeof travellers === 'number' && travellers > 0 ? travellers : undefined,
+        budget: typeof budget === 'string' ? budget.substring(0, 50) : undefined,
+        interests: typeof interests === 'string' ? interests.substring(0, 200) : undefined,
+        travelDate: typeof travelDate === 'string' ? travelDate.substring(0, 50) : undefined,
+        source: source || 'Itinerary Widget',
+        status: 'new'
+      });
+    } catch (e) {
+      console.error("Failed to create lead:", e);
+      // Continue anyway to not block user from getting the itinerary
+    }
+
     const packages = await Package.find({ clientId: client._id, active: true });
+    
+    const currency = client.currency || 'INR';
 
     const prompt = `
 You are a travel itinerary assistant for ${client.name}.
@@ -47,7 +94,7 @@ Travel Date: ${travelDate || 'Not specified'}
 Interests: ${interests || 'Not specified'}
 
 Available Agency Packages to reference (if relevant):
-${packages.map((p: any) => `- ${p.title} to ${p.destination}. Price: $${p.price}. ${p.description}`).join('\n')}
+${packages.map((p: Record<string, unknown>) => `- ${p.title} to ${p.destination}. Price: ${currency} ${p.price}. ${p.description}`).join('\n')}
 
 Rules:
 - Act as a travel itinerary assistant for this specific agency.
@@ -58,43 +105,46 @@ Rules:
 - Never claim confirmed booking.
 - Never claim confirmed availability.
 - Create a practical day-by-day plan.
+- AI ITINERARY SAFETY / GROUNDING: Note that AI-generated suggestions are just ideas. Final pricing, bookings, and availability of actual agency services must be confirmed directly with the agency.
 - Finish with a note that final quotation/availability must be confirmed with the agency via WhatsApp/Email.
-
-Respond strictly in valid JSON format matching this structure:
-{
-  "title": "Title of the itinerary",
-  "summary": "Brief summary",
-  "days": [
-    {
-      "day": 1,
-      "title": "Day title",
-      "activities": ["Activity 1", "Activity 2"]
-    }
-  ],
-  "note": "Closing note about confirming availability"
-}
 `;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash-lite',
-        contents: prompt,
-    });
+    const { data: parsedJson, usage } = await generateItinerary(prompt);
 
-    const aiText = response.text || "{}";
-    
-    let parsedJson;
     try {
-      const jsonStr = aiText.replace(/```json\n?|```/g, "").trim();
-      parsedJson = JSON.parse(jsonStr);
+      await AIUsage.create({
+        clientId,
+        feature: 'itinerary',
+        aiModel: 'gemini-3.5-flash-lite',
+        success: true,
+        latencyMs: Date.now() - startTime,
+        promptTokenCount: usage?.promptTokenCount,
+        candidatesTokenCount: usage?.candidatesTokenCount,
+        totalTokenCount: usage?.totalTokenCount,
+      });
     } catch (e) {
-      console.error("Failed to parse Gemini JSON:", aiText);
-      return NextResponse.json({ error: "Failed to generate a valid itinerary format." }, { status: 500, headers: corsHeaders });
+      console.error("Failed to log AI usage", e);
     }
 
     return NextResponse.json({ ...parsedJson, whatsapp: client.whatsapp || client.phone }, { headers: corsHeaders });
 
   } catch (error) {
     console.error("Itinerary API error:", error);
+    
+    try {
+      await connectToDatabase();
+      await AIUsage.create({
+        clientId: usageClientId,
+        feature: 'itinerary',
+        aiModel: 'gemini-3.5-flash-lite',
+        success: false,
+        latencyMs: Date.now() - startTime,
+        errorCategory: (error as Error).message || "Unknown error",
+      });
+    } catch (e) {
+      // Ignore logging failure
+    }
+    
     return NextResponse.json({ error: "Failed to generate itinerary" }, { status: 500, headers: corsHeaders });
   }
 }

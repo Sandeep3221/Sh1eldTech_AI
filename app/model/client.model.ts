@@ -12,6 +12,17 @@ export interface IClient extends Document {
   supportEmail: string;
   chatbotEnabled: boolean;
   itineraryEnabled: boolean;
+  allowedDomains: string[];
+  currency: string;
+  status: 'active' | 'suspended' | 'archived';
+  branding?: {
+    primaryColor?: string;
+    chatbotTitle?: string;
+    chatbotWelcomeMessage?: string;
+    itineraryTitle?: string;
+    itineraryLauncherText?: string;
+    logoUrl?: string;
+  };
   createdAt: Date;
 }
 
@@ -27,6 +38,17 @@ const ClientSchema: Schema = new Schema({
   supportEmail: { type: String, required: false },
   chatbotEnabled: { type: Boolean, default: false },
   itineraryEnabled: { type: Boolean, default: false },
+  allowedDomains: { type: [String], default: [] },
+  currency: { type: String, default: 'INR' },
+  status: { type: String, enum: ['active', 'suspended', 'archived'], default: 'active' },
+  branding: {
+    primaryColor: { type: String },
+    chatbotTitle: { type: String },
+    chatbotWelcomeMessage: { type: String },
+    itineraryTitle: { type: String },
+    itineraryLauncherText: { type: String },
+    logoUrl: { type: String }
+  },
   createdAt: { type: Date, default: Date.now },
 });
 

@@ -170,29 +170,69 @@
   `;
   document.head.appendChild(style);
 
+  // Fetch configuration
+  let config = {
+    branding: {
+      primaryColor: '#000000',
+      chatbotTitle: 'Support Assistant',
+      chatbotWelcomeMessage: 'Hello! How can I help you today?'
+    }
+  };
+
+  fetch(`${hostUrl}/api/widget-config?clientId=${clientId}`)
+    .then(res => res.json())
+    .then(data => {
+      if (!data.error && data.chatbotEnabled !== false) {
+        config = { ...config, ...data };
+        updateBranding();
+      } else if (data.chatbotEnabled === false) {
+        document.getElementById('shield-chatbot-container').style.display = 'none';
+      }
+    })
+    .catch(() => { /* use defaults */ });
+
   const container = document.createElement('div');
   container.id = 'shield-chatbot-container';
   container.innerHTML = `
     <div id="shield-chatbot-window">
-      <div id="shield-chatbot-header">
-        <span>Support Assistant</span>
+      <div id="shield-chatbot-header" style="background: ${config.branding.primaryColor}">
+        <span id="shield-chatbot-title">${config.branding.chatbotTitle}</span>
         <button id="shield-chatbot-close">&times;</button>
       </div>
       <div id="shield-chatbot-messages">
-        <div class="shield-msg shield-msg-ai">Hello! How can I help you today?</div>
+        <div class="shield-msg shield-msg-ai">${config.branding.chatbotWelcomeMessage}</div>
       </div>
       <div id="shield-chatbot-input-container">
         <input type="text" id="shield-chatbot-input" placeholder="Type a message..." autocomplete="off" />
-        <button id="shield-chatbot-send">
+        <button id="shield-chatbot-send" style="background: ${config.branding.primaryColor}">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
         </button>
       </div>
     </div>
-    <button id="shield-chatbot-button">
+    <button id="shield-chatbot-button" style="background: ${config.branding.primaryColor}">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
     </button>
   `;
   document.body.appendChild(container);
+
+  function updateBranding() {
+    const header = document.getElementById('shield-chatbot-header');
+    const send = document.getElementById('shield-chatbot-send');
+    const button = document.getElementById('shield-chatbot-button');
+    const title = document.getElementById('shield-chatbot-title');
+    const welcome = document.querySelector('.shield-msg-ai');
+    
+    if (header) header.style.background = config.branding.primaryColor;
+    if (send) send.style.background = config.branding.primaryColor;
+    if (button) button.style.background = config.branding.primaryColor;
+    if (title) title.innerText = config.branding.chatbotTitle;
+    if (welcome && chatHistory.length === 0) welcome.innerText = config.branding.chatbotWelcomeMessage;
+    
+    // Create new style block for dynamic user message backgrounds
+    const dynamicStyle = document.createElement('style');
+    dynamicStyle.innerHTML = ".shield-msg-user { background: " + config.branding.primaryColor + " !important; }";
+    document.head.appendChild(dynamicStyle);
+  }
 
   const btn = document.getElementById('shield-chatbot-button');
   const win = document.getElementById('shield-chatbot-window');
@@ -212,6 +252,8 @@
     win.style.display = 'none';
   });
 
+  let chatHistory = [];
+
   async function sendMessage() {
     const text = inputEl.value.trim();
     if (!text) return;
@@ -219,6 +261,12 @@
     addMessage(text, 'user');
     inputEl.value = '';
     sendBtn.disabled = true;
+
+    const currentHistory = [...chatHistory];
+    
+    // Add to local history after copying for this request
+    chatHistory.push({ role: 'user', content: text });
+    if (chatHistory.length > 10) chatHistory.shift();
 
     const typingId = 'typing-' + Date.now();
     const typingHtml = `<div id="${typingId}" class="shield-typing"><div class="shield-dot"></div><div class="shield-dot"></div><div class="shield-dot"></div></div>`;
@@ -229,7 +277,7 @@
       const res = await fetch(`${hostUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId, message: text })
+        body: JSON.stringify({ clientId, message: text, history: currentHistory })
       });
       const data = await res.json();
       
@@ -237,14 +285,18 @@
       
       if (res.ok) {
         addMessage(data.response, 'ai');
+        chatHistory.push({ role: 'model', content: data.response });
+        if (chatHistory.length > 10) chatHistory.shift();
       } else {
         addMessage(data.error || 'Sorry, an error occurred.', 'ai');
+        chatHistory.pop(); // Remove the user message from history if it failed
       }
     } catch (err) {
       if (document.getElementById(typingId)) {
         document.getElementById(typingId).remove();
       }
       addMessage('Network error. Please try again.', 'ai');
+      chatHistory.pop(); // Remove the user message from history if it failed
     }
 
     sendBtn.disabled = false;

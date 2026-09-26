@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import { Client } from "@/app/model/client.model";
+import crypto from "crypto";
 
 export async function GET() {
   try {
@@ -18,8 +19,12 @@ export async function POST(request: Request) {
     await connectToDatabase();
     const body = await request.json();
     
-    if (!body.name || !body.clientId || !body.email) {
-      return NextResponse.json({ error: "Name, clientId, and email are required" }, { status: 400 });
+    if (!body.name || !body.email) {
+      return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
+    }
+
+    if (!body.clientId) {
+      body.clientId = `shd_${crypto.randomBytes(8).toString('hex')}`;
     }
 
     const newClient = await Client.create(body);

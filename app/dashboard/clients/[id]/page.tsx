@@ -5,6 +5,21 @@ import Link from "next/link";
 import { ArrowLeft, Building2, Package2, HelpCircle, FileText, Code, Copy, CheckCircle2, Trash2, Edit2, Plus, Bot, Map } from "lucide-react";
 import { Button, Card, Input, Label, Textarea, Badge } from "../../../components/ui";
 
+interface ClientData {
+  _id: string;
+  name: string;
+  clientId: string;
+  email: string;
+  phone?: string;
+  whatsapp?: string;
+  website?: string;
+  location?: string;
+  businessDescription?: string;
+  supportEmail?: string;
+  chatbotEnabled: boolean;
+  itineraryEnabled: boolean;
+}
+
 interface Package {
   _id: string;
   title: string;
@@ -34,7 +49,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const resolvedParams = use(params);
   const { id } = resolvedParams;
 
-  const [client, setClient] = useState<any>(null);
+  const [client, setClient] = useState<ClientData | null>(null);
   const [packages, setPackages] = useState<Package[]>([]);
   const [faqs, setFaqs] = useState<Faq[]>([]);
   const [policies, setPolicies] = useState<Policy[]>([]);
@@ -140,7 +155,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     if (res.ok) fetchData();
   }
 
-  function handleCopy(text: string, setter: any) {
+  function handleCopy(text: string, setter: React.Dispatch<React.SetStateAction<boolean>>) {
     navigator.clipboard.writeText(text);
     setter(true);
     setTimeout(() => setter(false), 2000);
@@ -275,11 +290,11 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                 </div>
                 <div>
                   <Label>Inclusions (comma separated)</Label>
-                  <Input placeholder="Flights, Hotel, Breakfast" value={Array.isArray(pkgForm.inclusions) ? pkgForm.inclusions.join(', ') : (pkgForm.inclusions || "")} onChange={e => setPkgForm({...pkgForm, inclusions: e.target.value as any})} />
+                  <Input placeholder="Flights, Hotel, Breakfast" value={Array.isArray(pkgForm.inclusions) ? pkgForm.inclusions.join(', ') : (pkgForm.inclusions || "")} onChange={e => setPkgForm({...pkgForm, inclusions: e.target.value as unknown as string[]})} />
                 </div>
                 <div>
                   <Label>Exclusions (comma separated)</Label>
-                  <Input placeholder="Visa, Lunch, Personal expenses" value={Array.isArray(pkgForm.exclusions) ? pkgForm.exclusions.join(', ') : (pkgForm.exclusions || "")} onChange={e => setPkgForm({...pkgForm, exclusions: e.target.value as any})} />
+                  <Input placeholder="Visa, Lunch, Personal expenses" value={Array.isArray(pkgForm.exclusions) ? pkgForm.exclusions.join(', ') : (pkgForm.exclusions || "")} onChange={e => setPkgForm({...pkgForm, exclusions: e.target.value as unknown as string[]})} />
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
@@ -404,7 +419,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
           <Card className="p-8 border-blue-100 bg-blue-50/30">
             <h2 className="text-xl font-bold text-gray-900 mb-2">Integration Scripts</h2>
             <p className="text-sm text-gray-600 max-w-2xl mb-8">
-              Copy and paste the appropriate snippet directly into the <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-800">&lt;head&gt;</code> or just before the closing <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-800">&lt;/body&gt;</code> tag of the client's website.
+              Copy and paste the appropriate snippet directly into the <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-800">&lt;head&gt;</code> or just before the closing <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-800">&lt;/body&gt;</code> tag of the client&apos;s website.
             </p>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -421,12 +436,12 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                     <div className="relative mt-auto">
                       <pre className="bg-[#0d1117] text-[#c9d1d9] p-4 rounded-lg overflow-x-auto text-[13px] leading-relaxed font-mono">
 {`<script
-  src="https://your-domain.com/chatbot.js"
+  src="${process.env.NEXT_PUBLIC_APP_URL || 'https://YOUR-AI-DOMAIN'}/chatbot.js"
   data-client-id="${client.clientId}">
 </script>`}
                       </pre>
                       <button 
-                        onClick={() => handleCopy(`<script\n  src="https://your-domain.com/chatbot.js"\n  data-client-id="${client.clientId}">\n</script>`, setCopiedChatbot)}
+                        onClick={() => handleCopy(`<script\n  src="${process.env.NEXT_PUBLIC_APP_URL || 'https://YOUR-AI-DOMAIN'}/chatbot.js"\n  data-client-id="${client.clientId}">\n</script>`, setCopiedChatbot)}
                         className="absolute top-3 right-3 p-2 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
                         title="Copy to clipboard"
                       >
@@ -456,12 +471,12 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                     <div className="relative mt-auto">
                       <pre className="bg-[#0d1117] text-[#c9d1d9] p-4 rounded-lg overflow-x-auto text-[13px] leading-relaxed font-mono">
 {`<script
-  src="https://your-domain.com/itinerary.js"
+  src="${process.env.NEXT_PUBLIC_APP_URL || 'https://YOUR-AI-DOMAIN'}/itinerary.js"
   data-client-id="${client.clientId}">
 </script>`}
                       </pre>
                       <button 
-                        onClick={() => handleCopy(`<script\n  src="https://your-domain.com/itinerary.js"\n  data-client-id="${client.clientId}">\n</script>`, setCopiedItinerary)}
+                        onClick={() => handleCopy(`<script\n  src="${process.env.NEXT_PUBLIC_APP_URL || 'https://YOUR-AI-DOMAIN'}/itinerary.js"\n  data-client-id="${client.clientId}">\n</script>`, setCopiedItinerary)}
                         className="absolute top-3 right-3 p-2 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
                         title="Copy to clipboard"
                       >
