@@ -273,7 +273,7 @@
             </div>
             <div class="shield-iti-field">
               <label>Budget</label>
-              <input type="text" class="shield-iti-input" id="shield-iti-budget" placeholder="e.g. $1000" />
+              <input type="text" class="shield-iti-input" id="shield-iti-budget" placeholder="Enter your budget" />
             </div>
           </div>
           <div class="shield-iti-row">

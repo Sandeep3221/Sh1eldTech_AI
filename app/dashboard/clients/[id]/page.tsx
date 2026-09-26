@@ -281,7 +281,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                   </div>
                 </div>
                 <div>
-                  <Label required>Price ($)</Label>
+                  <Label required>Price ({client?.currency || 'USD'})</Label>
                   <Input required type="number" min="0" value={pkgForm.price || ""} onChange={e => setPkgForm({...pkgForm, price: Number(e.target.value)})} />
                 </div>
                 <div className="md:col-span-2">
@@ -310,7 +310,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                 <div>
                   <div className="flex items-center gap-3 mb-1">
                     <h4 className="font-bold text-gray-900 text-lg">{p.title}</h4>
-                    <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200">${p.price}</Badge>
+                    <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200">{client?.currency || 'USD'} {p.price}</Badge>
                   </div>
                   <p className="text-sm font-medium text-gray-600 mb-2">{p.destination} • {p.days} Days, {p.nights} Nights</p>
                   <p className="text-sm text-gray-500 line-clamp-2 max-w-3xl">{p.description}</p>
