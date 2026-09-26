@@ -14,7 +14,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (!updatedPolicy) return NextResponse.json({ error: "Policy not found" }, { status: 404 });
     
     return NextResponse.json(updatedPolicy);
-  } catch (error) {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'ValidationError') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: "Failed to update policy" }, { status: 500 });
   }
 }

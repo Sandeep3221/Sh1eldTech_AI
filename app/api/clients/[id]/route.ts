@@ -30,8 +30,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
     return NextResponse.json(client);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Failed to update client", error);
+    if (error instanceof Error && error.name === 'ValidationError') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: "Failed to update client" }, { status: 500 });
   }
 }

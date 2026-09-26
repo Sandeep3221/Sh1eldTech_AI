@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST as chatPOST } from '../app/api/chat/route';
 import { POST as itineraryPOST } from '../app/api/itinerary/route';
 import { GET as widgetConfigGET } from '../app/api/widget-config/route';
-import { pickAndValidateClient, pickAndValidatePackage } from '../app/lib/validation';
+import { pickAndValidateClient, pickAndValidatePackage, pickAndValidateFaq, pickAndValidatePolicy } from '../app/lib/validation';
 import { NextRequest } from 'next/server';
 
 vi.mock('../app/lib/db', () => ({ connectToDatabase: vi.fn() }));
@@ -145,13 +145,44 @@ describe('Hardening Fixes', () => {
       expect(safe).not.toHaveProperty('adminAccess');
     });
 
-    it('throws on invalid package title type', () => {
-      const body = {
-        clientId: 'client123',
-        title: 123, // Invalid type
-      };
+    it('throws on invalid client fields', () => {
+      expect(() => pickAndValidateClient({ name: 123 })).toThrow('name must be a string');
+      expect(() => pickAndValidateClient({ email: 'notanemail' })).toThrow('Invalid email');
+      expect(() => pickAndValidateClient({ currency: 'GBP' })).toThrow('Invalid currency');
+      expect(() => pickAndValidateClient({ status: 'invalid_status' })).toThrow('Invalid status');
+      expect(() => pickAndValidateClient({ allowedDomains: 'not_an_array' })).toThrow('allowedDomains must be an array');
+      expect(() => pickAndValidateClient({ website: 'not_a_url' })).toThrow('Invalid website URL');
+    });
+
+    it('allows partial updates for client', () => {
+      const body = { status: 'suspended' };
+      const safe = pickAndValidateClient(body);
+      expect(safe).toEqual({ status: 'suspended' });
+    });
+
+    it('throws on invalid package fields', () => {
+      expect(() => pickAndValidatePackage({ title: 123 })).toThrow('title must be a string');
+      expect(() => pickAndValidatePackage({ price: -10 })).toThrow('price must be a non-negative number');
+      expect(() => pickAndValidatePackage({ price: 'invalid' })).toThrow('price must be a non-negative number');
+      expect(() => pickAndValidatePackage({ inclusions: 'not_an_array' })).toThrow('inclusions must be an array');
+      expect(() => pickAndValidatePackage({ days: -1 })).toThrow('days must be at least 0');
+    });
+
+    it('allows partial updates for package', () => {
+      const body = { price: 150 };
+      const safe = pickAndValidatePackage(body);
+      expect(safe).toEqual({ price: 150 });
+    });
+
+    it('validates FAQ and Policy fields', () => {
+      expect(() => pickAndValidateFaq({ question: 123 })).toThrow('question must be a string');
+      expect(() => pickAndValidatePolicy({ title: 123 })).toThrow('title must be a string');
       
-      expect(() => pickAndValidatePackage(body)).toThrow('Invalid title');
+      const safeFaq = pickAndValidateFaq({ question: 'How?' });
+      expect(safeFaq).toEqual({ question: 'How?' });
+      
+      const safePolicy = pickAndValidatePolicy({ title: 'Refunds' });
+      expect(safePolicy).toEqual({ title: 'Refunds' });
     });
   });
 

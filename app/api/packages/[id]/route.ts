@@ -14,7 +14,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (!updatedPackage) return NextResponse.json({ error: "Package not found" }, { status: 404 });
     
     return NextResponse.json(updatedPackage);
-  } catch (error) {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'ValidationError') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: "Failed to update package" }, { status: 500 });
   }
 }

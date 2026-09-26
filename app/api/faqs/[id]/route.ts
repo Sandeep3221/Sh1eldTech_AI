@@ -14,7 +14,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (!updatedFaq) return NextResponse.json({ error: "Faq not found" }, { status: 404 });
     
     return NextResponse.json(updatedFaq);
-  } catch (error) {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'ValidationError') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: "Failed to update faq" }, { status: 500 });
   }
 }

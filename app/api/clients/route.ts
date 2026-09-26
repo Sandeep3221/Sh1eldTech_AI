@@ -29,8 +29,11 @@ export async function POST(request: Request) {
 
     const newClient = await Client.create(safeBody);
     return NextResponse.json(newClient, { status: 201 });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Failed to create client", error);
+    if (error instanceof Error && error.name === 'ValidationError') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: "Failed to create client" }, { status: 500 });
   }
 }

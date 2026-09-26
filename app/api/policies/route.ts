@@ -32,7 +32,10 @@ export async function POST(request: Request) {
     const safeBody = pickAndValidatePolicy(body);
     const newPolicy = await Policy.create(safeBody);
     return NextResponse.json(newPolicy, { status: 201 });
-  } catch (error) {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'ValidationError') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: "Failed to create policy" }, { status: 500 });
   }
 }
