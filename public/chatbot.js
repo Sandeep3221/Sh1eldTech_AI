@@ -53,13 +53,17 @@
       overflow: hidden;
       border: 1px solid #eaeaea;
     }
-    @media (max-width: 400px) {
+    @media (max-width: 480px) {
       #shield-chatbot-window {
-        width: 100vw;
-        height: 100vh;
-        bottom: 0;
-        right: -20px;
-        border-radius: 0;
+        position: absolute;
+        bottom: 80px;
+        right: 0;
+        width: calc(100vw - 40px);
+        max-width: 350px;
+        max-height: calc(100dvh - 120px);
+        border-radius: 12px;
+        border: 1px solid #eaeaea;
+        z-index: 1000000;
       }
     }
     #shield-chatbot-header {
@@ -112,6 +116,7 @@
     }
     #shield-chatbot-input-container {
       padding: 12px;
+      padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
       background: #fff;
       border-top: 1px solid #eaeaea;
       display: flex;

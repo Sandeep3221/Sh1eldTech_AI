@@ -70,7 +70,7 @@ export default function DashboardOverview() {
         description="Monitor your clients and AI integrations across Shield Tech."
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
         <Card className="p-6">
           <div className="flex justify-between items-start">
             <div>

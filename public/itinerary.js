@@ -57,15 +57,18 @@
         right: 16px;
       }
       #shield-iti-modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
+        position: absolute;
         bottom: 0;
-        width: 100vw;
-        max-height: 100vh;
-        border-radius: 0;
-        border: none;
+        right: 0;
+        width: calc(100vw - 32px);
+        max-width: 380px;
+        max-height: calc(100dvh - 120px);
+        border-radius: 12px;
+        border: 1px solid #eaeaea;
+      }
+      .shield-iti-row {
+        flex-direction: column;
+        gap: 12px;
       }
     }
     .shield-iti-header {
@@ -90,6 +93,7 @@
     }
     .shield-iti-body {
       padding: 20px;
+      padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
       overflow-y: auto;
       flex: 1;
     }
@@ -150,6 +154,8 @@
       display: none;
       font-size: 14px;
       color: #333;
+      overflow-wrap: break-word;
+      word-break: break-word;
     }
     .shield-iti-result h3 {
       margin: 0 0 8px 0;

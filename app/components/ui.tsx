@@ -80,7 +80,7 @@ export function PageHeader({ title, description, action }: { title: string, desc
 export function Table({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={`w-full overflow-x-auto ${className}`}>
-      <table className="w-full text-left border-collapse">
+      <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
         {children}
       </table>
     </div>

@@ -48,16 +48,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
           
-          <div className="hidden md:block pt-6 mt-6 border-t border-gray-100">
+          <div className="pt-0 md:pt-6 md:mt-6 md:border-t md:border-gray-100 flex-shrink-0 flex items-center md:items-stretch">
             <button 
               onClick={async () => {
                 await fetch('/api/auth/logout', { method: 'POST' });
                 window.location.href = '/login';
               }}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 transition-colors group"
+              className="flex items-center gap-2.5 px-3 py-2 md:py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 transition-colors group md:w-full"
             >
               <LogOut className="w-4 h-4 text-gray-400 group-hover:text-red-500 transition-colors" />
-              Sign out
+              <span className="whitespace-nowrap">Sign out</span>
             </button>
           </div>
         </nav>
