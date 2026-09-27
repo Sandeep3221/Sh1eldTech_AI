@@ -14,4 +14,6 @@ const FaqSchema: Schema = new Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+FaqSchema.index({ clientId: 1 });
+
 export const Faq = mongoose.models.Faq || mongoose.model<IFaq>("Faq", FaqSchema);

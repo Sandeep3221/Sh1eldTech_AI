@@ -14,4 +14,6 @@ const PolicySchema: Schema = new Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+PolicySchema.index({ clientId: 1 });
+
 export const Policy = mongoose.models.Policy || mongoose.model<IPolicy>("Policy", PolicySchema);

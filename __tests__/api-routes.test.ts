@@ -4,7 +4,7 @@ import { POST as ItiPOST } from '../app/api/itinerary/route';
 import { NextRequest } from 'next/server';
 
 vi.mock('../app/lib/db', () => ({
-  connectToDatabase: vi.fn(),
+  connectToDatabase: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock('../app/lib/rate-limit', () => ({
@@ -25,10 +25,14 @@ const mockClient = {
 
 vi.mock('../app/model/client.model', () => ({
   Client: {
-    findOne: vi.fn(async ({ clientId }) => {
-      if (clientId === 'shd_test') return mockClient;
-      if (clientId === 'shd_disabled') return { ...mockClient, chatbotEnabled: false, itineraryEnabled: false };
-      return null;
+    findOne: vi.fn(({ clientId }) => {
+      let res = null;
+      if (clientId === 'shd_test') res = mockClient;
+      if (clientId === 'shd_disabled') res = { ...mockClient, chatbotEnabled: false, itineraryEnabled: false };
+      return {
+        lean: vi.fn().mockResolvedValue(res),
+        then: function(resolve: any) { resolve(res); }
+      };
     })
   }
 }));

@@ -54,12 +54,13 @@ describe('Hardening Fixes', () => {
 
   describe('Client Lifecycle Enforcement', () => {
     it('rejects chat for suspended client', async () => {
-      mockClientFindOne.mockResolvedValueOnce({
+      const mockRes = {
         _id: 'client123',
         status: 'suspended',
         chatbotEnabled: true,
         allowedDomains: ['test.com'],
-      });
+      };
+      mockClientFindOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValueOnce(mockRes), then: (resolve: any) => resolve(mockRes) } as any);
 
       const req = new NextRequest('http://localhost/api/chat', {
         method: 'POST',
@@ -74,12 +75,13 @@ describe('Hardening Fixes', () => {
     });
 
     it('rejects itinerary for archived client', async () => {
-      mockClientFindOne.mockResolvedValueOnce({
+      const mockRes = {
         _id: 'client123',
         status: 'archived',
         itineraryEnabled: true,
         allowedDomains: ['test.com'],
-      });
+      };
+      mockClientFindOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValueOnce(mockRes), then: (resolve: any) => resolve(mockRes) } as any);
 
       const req = new NextRequest('http://localhost/api/itinerary', {
         method: 'POST',
@@ -102,12 +104,13 @@ describe('Hardening Fixes', () => {
 
   describe('Lead Persistence', () => {
     it('returns error if lead creation fails and does not call Gemini', async () => {
-      mockClientFindOne.mockResolvedValueOnce({
+      const mockRes = {
         _id: 'client123',
         status: 'active',
         itineraryEnabled: true,
         allowedDomains: ['test.com'],
-      });
+      };
+      mockClientFindOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValueOnce(mockRes), then: (resolve: any) => resolve(mockRes) } as any);
       mockLeadCreate.mockRejectedValueOnce(new Error('DB Error'));
 
       const req = new NextRequest('http://localhost/api/itinerary', {

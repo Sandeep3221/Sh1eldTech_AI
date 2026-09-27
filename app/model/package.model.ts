@@ -28,4 +28,6 @@ const PackageSchema: Schema = new Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+PackageSchema.index({ clientId: 1, active: 1 });
+
 export const Package = mongoose.models.Package || mongoose.model<IPackage>("Package", PackageSchema);
