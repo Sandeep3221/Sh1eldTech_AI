@@ -1,9 +1,5 @@
 import { cookies } from "next/headers";
-import { jwtVerify, SignJWT, type JWTPayload } from "jose";
-
-const JWT_ISSUER = "sh1eldtech-ai";
-const JWT_AUDIENCE = "sh1eldtech-admin";
-const JWT_EXPIRATION = "12h";
+import { jwtVerify, SignJWT } from "jose";
 
 function getSecret() {
   const secret = process.env.JWT_SECRET;
@@ -14,12 +10,9 @@ function getSecret() {
 }
 
 export async function signSessionToken(payload: object): Promise<string> {
-  return new SignJWT({ ...payload, role: "admin" })
+  return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
-    .setIssuedAt()
-    .setIssuer(JWT_ISSUER)
-    .setAudience(JWT_AUDIENCE)
-    .setExpirationTime(JWT_EXPIRATION)
+    .setExpirationTime("7d")
     .sign(getSecret());
 }
 
@@ -27,13 +20,11 @@ export async function verifySessionToken(token: string): Promise<Record<string, 
   try {
     const { payload } = await jwtVerify(token, getSecret(), {
       algorithms: ["HS256"],
-      issuer: JWT_ISSUER,
-      audience: JWT_AUDIENCE,
     });
 
     if (payload.role !== "admin") return null;
 
-    return payload as JWTPayload & Record<string, unknown>;
+    return payload as Record<string, unknown>;
   } catch {
     return null;
   }

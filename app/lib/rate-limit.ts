@@ -33,4 +33,3 @@ export class RateLimiter {
 
 export const chatRateLimiter = new RateLimiter(30, 60 * 1000); // 30 req / min
 export const itineraryRateLimiter = new RateLimiter(5, 10 * 60 * 1000); // 5 req / 10 min
-export const loginRateLimiter = new RateLimiter(5, 15 * 60 * 1000); // 5 attempts / 15 min
