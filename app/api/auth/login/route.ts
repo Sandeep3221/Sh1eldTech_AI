@@ -11,7 +11,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Too many login attempts" }, { status: 429 });
     }
 
-    const body: unknown = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+    }
+
     if (
       !body ||
       typeof body !== "object" ||
@@ -49,6 +55,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch {
-    return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+    console.error("Authentication request failed");
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
