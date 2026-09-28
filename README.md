@@ -25,8 +25,8 @@ Create a `.env.local` file in the root directory:
 MONGODB_URI=mongodb://localhost:27017/shield-ai
 GEMINI_API_KEY=your_gemini_api_key_here
 ADMIN_EMAIL=admin@shield.local
-ADMIN_PASSWORD=secret
-AUTH_SECRET=random_auth_secret_123
+ADMIN_PASSWORD_HASH=your_bcrypt_password_hash_here
+JWT_SECRET=your_long_random_jwt_secret_here
 ```
 
 ## 🛠️ Setup & Run
@@ -42,7 +42,7 @@ npm run dev
 All endpoints return standard JSON. The public AI/Lead endpoints have permissive CORS headers to support cross-origin widget embeds.
 
 ### Auth
-- `POST /api/auth/login` - Authenticates using env variables, sets HTTP-only cookie.
+- `POST /api/auth/login` - Authenticates using the configured admin email and bcrypt password hash, then sets an HTTP-only JWT cookie.
 - `POST /api/auth/logout` - Clears the auth cookie.
 
 ### Clients (Agencies)

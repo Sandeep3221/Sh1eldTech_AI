@@ -1,91 +1,49 @@
 import { cookies } from "next/headers";
+import { jwtVerify, SignJWT, type JWTPayload } from "jose";
 
-const getSecret = () => process.env.AUTH_SECRET || "fallback_secret_for_dev_only";
+const JWT_ISSUER = "sh1eldtech-ai";
+const JWT_AUDIENCE = "sh1eldtech-admin";
+const JWT_EXPIRATION = "12h";
 
-async function getCryptoKey() {
-  const encoder = new TextEncoder();
-  return await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(getSecret()),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign", "verify"]
-  );
-}
-
-function bufferToBase64Url(buffer: ArrayBuffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+function getSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET is not configured");
   }
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  return new TextEncoder().encode(secret);
 }
 
 export async function signSessionToken(payload: object): Promise<string> {
-  const encoder = new TextEncoder();
-  const dataString = JSON.stringify({ ...payload, exp: Date.now() + 7 * 24 * 60 * 60 * 1000 });
-  const data = btoa(dataString).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  
-  const key = await getCryptoKey();
-  const signatureBuffer = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    encoder.encode(data)
-  );
-  
-  const signature = bufferToBase64Url(signatureBuffer);
-  return `${data}.${signature}`;
+  return new SignJWT({ ...payload, role: "admin" })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setIssuedAt()
+    .setIssuer(JWT_ISSUER)
+    .setAudience(JWT_AUDIENCE)
+    .setExpirationTime(JWT_EXPIRATION)
+    .sign(getSecret());
 }
 
 export async function verifySessionToken(token: string): Promise<Record<string, unknown> | null> {
   try {
-    const [data, signature] = token.split(".");
-    if (!data || !signature) return null;
-    
-    const key = await getCryptoKey();
-    const encoder = new TextEncoder();
-    
-    let base64 = signature.replace(/-/g, '+').replace(/_/g, '/');
-    while (base64.length % 4) base64 += '=';
-    
-    const binary = atob(base64);
-    const signatureBytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      signatureBytes[i] = binary.charCodeAt(i);
-    }
-    
-    const isValid = await crypto.subtle.verify(
-      "HMAC",
-      key,
-      signatureBytes,
-      encoder.encode(data)
-    );
-    
-    if (!isValid) return null;
-    
-    let dataBase64 = data.replace(/-/g, '+').replace(/_/g, '/');
-    while (dataBase64.length % 4) dataBase64 += '=';
-    const payload = JSON.parse(atob(dataBase64));
-    
-    if (payload.exp && payload.exp < Date.now()) {
-      return null;
-    }
-    
-    return payload;
+    const { payload } = await jwtVerify(token, getSecret(), {
+      algorithms: ["HS256"],
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+    });
+
+    if (payload.role !== "admin") return null;
+
+    return payload as JWTPayload & Record<string, unknown>;
   } catch {
     return null;
   }
 }
 
-export async function requireAdmin(): Promise<boolean> {
+export async function requireAdmin(): Promise<Record<string, unknown> | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get("shield_auth")?.value;
   
-  if (!token) return false;
-  
-  const payload = await verifySessionToken(token);
-  if (!payload || payload.role !== "admin") return false;
-  
-  return true;
+  if (!token) return null;
+
+  return verifySessionToken(token);
 }

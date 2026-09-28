@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import { Lead } from "@/app/model/lead.model";
+import { requireAdmin } from "@/app/lib/auth";
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!await requireAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     await connectToDatabase();
     const resolvedParams = await params;

@@ -8,7 +8,7 @@ export async function proxy(request: NextRequest) {
 
   if (token) {
     const payload = await verifySessionToken(token);
-    if (payload && payload.role === 'admin') {
+    if (payload) {
       isAuth = true;
     }
   }

@@ -3,8 +3,11 @@ import { connectToDatabase } from "@/app/lib/db";
 import { Client } from "@/app/model/client.model";
 import crypto from "crypto";
 import { pickAndValidateClient } from "@/app/lib/validation";
+import { requireAdmin } from "@/app/lib/auth";
 
 export async function GET() {
+  if (!await requireAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     await connectToDatabase();
     const clients = await Client.find({}).sort({ createdAt: -1 });
@@ -16,6 +19,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!await requireAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     await connectToDatabase();
     const body = await request.json();

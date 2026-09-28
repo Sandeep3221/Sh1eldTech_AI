@@ -37,6 +37,20 @@ describe('Proxy / Middleware', () => {
     expect(res.status).toBe(200);
   });
 
+  it('should allow all explicitly public auth and widget APIs without auth', async () => {
+    for (const path of ['/api/auth/login', '/api/auth/logout', '/api/itinerary', '/api/widget-config']) {
+      const req = new NextRequest(`http://localhost:3000${path}`);
+      const res = await proxy(req);
+      expect(res.status).toBe(200);
+    }
+  });
+
+  it('should protect unknown API routes by default', async () => {
+    const req = new NextRequest('http://localhost:3000/api/future-admin-endpoint');
+    const res = await proxy(req);
+    expect(res.status).toBe(401);
+  });
+
   it('should allow widget-config without auth', async () => {
     const req = new NextRequest('http://localhost:3000/api/widget-config');
     const res = await proxy(req);

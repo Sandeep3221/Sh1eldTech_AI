@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import { Lead } from "@/app/model/lead.model";
+import { requireAdmin } from "@/app/lib/auth";
 
 export async function GET(request: Request) {
+  if (!await requireAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     await connectToDatabase();
     const { searchParams } = new URL(request.url);
@@ -18,6 +21,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!await requireAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     await connectToDatabase();
     const body = await request.json();

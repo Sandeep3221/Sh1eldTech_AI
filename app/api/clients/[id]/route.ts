@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import { Client } from "@/app/model/client.model";
 import { pickAndValidateClient } from "@/app/lib/validation";
+import { requireAdmin } from "@/app/lib/auth";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!await requireAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     await connectToDatabase();
     const { id } = await params;
@@ -19,6 +22,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!await requireAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     await connectToDatabase();
     const { id } = await params;
@@ -40,6 +45,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!await requireAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     await connectToDatabase();
     const { id } = await params;

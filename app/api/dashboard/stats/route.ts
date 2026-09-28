@@ -3,10 +3,13 @@ import { connectToDatabase } from "@/app/lib/db";
 import { Client } from "@/app/model/client.model";
 import { Lead } from "@/app/model/lead.model";
 import { AIUsage } from "@/app/model/ai-usage.model";
+import { requireAdmin } from "@/app/lib/auth";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  if (!await requireAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     await connectToDatabase();
 
