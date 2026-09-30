@@ -18,6 +18,8 @@ The project follows a direct, readable full-stack Next.js architecture (no unnec
 - `app/model/` - Mongoose database schemas.
 - `public/` - Standalone vanilla JS embed widgets (`chatbot.js`, `itinerary.js`).
 - `proxy.ts` - Edge middleware protecting the dashboard via simple cookie auth.
+
+- 
 ## 🔑 Environment Variables
 Create a `.env.local` file in the root directory:
 ```env
