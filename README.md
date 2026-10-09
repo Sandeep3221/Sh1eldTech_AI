@@ -11,6 +11,7 @@ A premium B2B SaaS dashboard and AI toolkit designed for travel agencies. Shield
 - **AI Engine:** Google Gemini (`@google/genai`)
 
 ## 📂 Project Structure
+
 The project follows a direct, readable full-stack Next.js architecture (no unnecessary abstraction layers).
 
 - `app/api/` - Backend API routes (direct DB/Gemini access).
